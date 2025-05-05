@@ -3,6 +3,7 @@ from hashlib import sha256
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
+# Target hashes to crack
 PASSWORDS_TO_BRUTE_FORCE = [
     "b4061a4bcfe1a2cbf78286f3fab2fb578266d1bd16c414c650c5ac04dfc696e1",
     "cf0b0cfc90d8b4be14e00114827494ed5522e9aa1c7e6960515b58626cad0b44",
@@ -43,13 +44,16 @@ def brute_force_password() -> None:
 
     num_workers = max(1, multiprocessing.cpu_count() - 1)
     print(f"Using {num_workers} worker processes")
+
     max_value = 100_000_000
+
     step = 5_000_000
+
     all_passwords = []
+    found_count = 0
 
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = []
-
         for i in range(0, max_value, step):
             end = min(i + step, max_value)
             futures.append(executor.submit(check_password, i, end))
@@ -59,23 +63,22 @@ def brute_force_password() -> None:
             if result:
                 all_passwords.extend(result)
                 for pwd, hash_val in result:
+                    found_count += 1
                     print(f"Found password: {pwd} for hash: {hash_val}")
 
-                if len(all_passwords) >= 10:
+                if found_count >= 10:
                     for f in futures:
                         if not f.done():
                             f.cancel()
                     break
 
-    print("\nFound", len(all_passwords), "passwords:")
+    print(f"\nFound {found_count} passwords:")
 
     hash_positions = {h: i for i, h in enumerate(PASSWORDS_TO_BRUTE_FORCE)}
     all_passwords.sort(key=lambda x: hash_positions.get(x[1], 999))
 
-    for pwd, hash_val in result:
-        print(f"Found password: {pwd} and hash: {hash_val}")
-
-
+    for i, (password, hash_val) in enumerate(all_passwords):
+        print(f"Found password: {password} and hash: {hash_val}")
 
 if __name__ == "__main__":
     start_time = time.perf_counter()
